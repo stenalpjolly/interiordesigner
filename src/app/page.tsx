@@ -1,60 +1,74 @@
 "use client";
 
-import { useState } from "react";
-import UploadScreen from "@/components/UploadScreen";
-import LoadingScreen from "@/components/LoadingScreen";
-import QuestionsScreen from "@/components/QuestionsScreen";
-import ResultScreen from "@/components/ResultScreen";
+import { useState } from 'react';
+import { useAppContext } from '@/lib/AppContext';
+import UploadScreen from '@/components/UploadScreen';
+import LoadingScreen from '@/components/LoadingScreen';
+import QuestionsScreen from '@/components/QuestionsScreen';
+import ResultScreen from '@/components/ResultScreen';
 
-// Define types for our state
-interface AnalysisData {
-  designerNotes: string;
-  questions: {
-    question: string;
-    options: string[];
-  }[];
-}
+type Screen = 'upload' | 'loading' | 'questions' | 'results';
 
 export default function HomePage() {
-  const [screen, setScreen] = useState('upload'); // upload, analyzing, questions, generating, results
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
-  const [resultImages, setResultImages] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [variantCount, setVariantCount] = useState(2); // Keep track of variant count
+  const [screen, setScreen] = useState<Screen>('upload');
+  const [loadingText, setLoadingText] = useState('Analyzing your image...');
+  const {
+    imageBase64,
+    setImageBase64,
+    analysisData,
+    setAnalysisData,
+    resultImages,
+    setResultImages,
+    error,
+    setError,
+    userAnswers,
+    setUserAnswers,
+  } = useAppContext();
 
-  const handleImageUpload = async (imageData: string) => {
-    setImageBase64(imageData);
-    setScreen('analyzing');
+  const handleImageUpload = async (file: File) => {
+    setLoadingText('Analyzing your image...');
+    setScreen('loading');
     setError(null);
-
     try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData }),
-      });
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        if (!base64) {
+          throw new Error("Missing image data");
+        }
+        setImageBase64(base64);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Analysis failed: ${response.statusText}`);
-      }
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData: base64 }),
+        });
 
-      const data = await response.json();
-      setAnalysisData(data);
-      setScreen('questions');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to analyze image');
+        }
+
+        const data = await response.json();
+        setAnalysisData(data);
+        setScreen('questions');
+      };
+      reader.onerror = () => {
+        throw new Error("Failed to read file");
+      };
     } catch (err) {
       const error = err as Error;
       setError(error.message);
-      setScreen('upload'); // Go back to upload on error
+      setScreen('upload');
     }
   };
 
-  const handleQuestionsSubmit = async (answers: Record<string, string>, count: number) => {
-    setScreen('generating');
+  const handleQuestionsSubmit = async (answers: Record<string, string | string[]>, count: number) => {
+    setLoadingText('Generating your designs...');
+    setScreen('loading');
     setError(null);
-    setResultImages([]);
-    setVariantCount(count); // Set variant count for the loading screen message
+    setUserAnswers(answers);
 
     try {
       const generationPromises = Array.from({ length: count }, () =>
@@ -71,85 +85,74 @@ export default function HomePage() {
             const errorData = await res.json();
             throw new Error(errorData.error || `Generation failed: ${res.statusText}`);
           }
-          return res.json();
+          const data = await res.json();
+          if (!data.image) {
+            throw new Error("Failed to parse image from API response");
+          }
+          return data;
         })
       );
 
-      const results = await Promise.all(generationPromises);
-      const images = results.map(result => result.image).filter(Boolean);
+      const results = await Promise.allSettled(generationPromises);
       
-      if (images.length === 0) {
-        throw new Error("Image generation failed to produce any results.");
-      }
+      const successfulImages = results
+        .filter((result): result is PromiseFulfilledResult<{ image: string }> => result.status === 'fulfilled' && result.value.image)
+        .map(result => result.value.image);
 
-      setResultImages(images);
-      setScreen('results');
+      const failedCount = results.length - successfulImages.length;
+
+      if (successfulImages.length > 0) {
+        setResultImages(successfulImages);
+        setScreen('results');
+        if (failedCount > 0) {
+          setError(`${failedCount} image(s) failed to generate.`);
+        }
+      } else {
+        throw new Error("Image generation failed for all requests.");
+      }
     } catch (err) {
       const error = err as Error;
       setError(error.message);
-      setScreen('questions'); // Go back to questions on error
+      setScreen('questions');
     }
   };
 
   const handleStartOver = () => {
-    setScreen('upload');
     setImageBase64(null);
     setAnalysisData(null);
     setResultImages([]);
     setError(null);
+    setUserAnswers(null);
+    setScreen('upload');
   };
 
   const getScreenContent = () => {
     switch (screen) {
       case 'upload':
-        return <UploadScreen onImageUpload={handleImageUpload} />;
-      case 'analyzing':
-        return <LoadingScreen text="Analyzing Your Room..." subtext="Our AI is getting to know your space." />;
+        return <UploadScreen onImageUpload={handleImageUpload} error={error} />;
+      case 'loading':
+        return <LoadingScreen text={loadingText} />;
       case 'questions':
         if (analysisData && imageBase64) {
-          return <QuestionsScreen analysisData={analysisData} imageData={imageBase64} onSubmit={handleQuestionsSubmit} />;
+          return <QuestionsScreen analysisData={analysisData} imageData={imageBase64} onSubmit={handleQuestionsSubmit} error={error} />;
         }
-        // Fallback or error state if data is missing
         handleStartOver();
-        return null;
-      case 'generating':
-        return <LoadingScreen text="Generating Your Designs..." subtext={`Creating ${variantCount} unique option${variantCount > 1 ? 's' : ''}. Please wait.`} />;
+        return <UploadScreen onImageUpload={handleImageUpload} error="Something went wrong. Please start over." />;
       case 'results':
         return <ResultScreen images={resultImages} onStartOver={handleStartOver} />;
       default:
-        return <UploadScreen onImageUpload={handleImageUpload} />;
+        return null;
     }
   };
 
-  const containerMaxWidth = screen === 'questions' || screen === 'results' ? 'max-w-7xl' : 'max-w-xl';
-
   return (
-    <main className="text-white min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-gray-900 font-sans">
-      <div className="w-full max-w-md text-center mb-8 mt-8">
-        <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
-          AI Interior Designer
-        </h1>
-        <p className="text-lg sm:text-xl text-gray-400 mt-2">
-          Instantly redesign any room in your home.
-        </p>
+    <main className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24 bg-gray-900 text-white">
+      <div className="absolute top-0 left-0 p-4">
+        <h1 className="text-2xl font-bold tracking-tight">10x Interior Designer</h1>
       </div>
-
-      <div className={`bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 p-6 sm:p-8 rounded-2xl shadow-2xl w-full ${containerMaxWidth} transition-all duration-500`}>
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 text-red-300 rounded-lg text-sm flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <span><strong>Error:</strong> {error}</span>
-          </div>
-        )}
-        
+      <div className="w-full max-w-4xl">
         {getScreenContent()}
       </div>
-      
-      <footer className="text-center text-gray-500 text-sm mt-8 mb-4">
-        <p>&copy; {new Date().getFullYear()} 10x Interior Designer. All rights reserved.</p>
-      </footer>
     </main>
   );
 }

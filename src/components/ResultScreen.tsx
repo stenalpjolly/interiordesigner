@@ -11,11 +11,12 @@ interface ResultScreenProps {
 export default function ResultScreen({ images, onStartOver }: ResultScreenProps) {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState('');
   const { userAnswers, analysisData, resultImages, setResultImages, error, setError } = useAppContext();
 
   const handleGenerateMore = async () => {
-    if (!images[0] || !analysisData || !userAnswers) {
-      setError("Could not generate more designs. Please start over.");
+    if (!images[0] || !analysisData || !analysisData.designerNotes || !userAnswers) {
+      setError("Could not generate more designs because the session data is incomplete. Please start over.");
       return;
     }
 
@@ -78,15 +79,30 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
     }
   };
 
+  const handleClearCache = async () => {
+    setCacheStatus('Clearing...');
+    try {
+      const response = await fetch('/api/clearcache', { method: 'POST' });
+      if (response.ok) {
+        setCacheStatus('Cache Cleared!');
+      } else {
+        setCacheStatus('Failed to clear cache.');
+      }
+    } catch (error) {
+      setCacheStatus('Failed to clear cache.');
+    }
+    setTimeout(() => setCacheStatus(''), 3000);
+  };
+
   if (loading) {
     return <LoadingScreen text="Generating more designs..." />;
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto z-10 relative">
       {error && (
         <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 text-red-300 rounded-lg text-sm flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="http://www.w3.org/2000/svg" fill="currentColor">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
           <span><strong>Error:</strong> {error}</span>
@@ -128,6 +144,9 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
         </button>
         <button type="button" onClick={handleGenerateMore} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200">
           Generate More
+        </button>
+        <button type="button" onClick={handleClearCache} disabled={!!cacheStatus} className="bg-red-800 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200 disabled:opacity-50">
+          {cacheStatus || 'Clear Cache'}
         </button>
       </div>
 
