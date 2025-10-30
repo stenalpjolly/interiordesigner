@@ -81,10 +81,11 @@ export async function POST(req: NextRequest) {
     };
 
     // 4. System instruction should be a plain string
-    const systemInstruction: string = `You are a world-class interior designer. Your task is to analyze the user's room image and generate a set of questions to help them redesign it.
-    1.  **Analyze the image:** Briefly describe the room's current state, noting its strengths and potential. This will be your "Designer's Notes".
-    2.  **Generate Questions:** Create 2 to 4 multiple-choice questions about design preferences (e.g., style, color, materials, furniture). The options should be simple and clear.
-    3.  **Output:** Respond ONLY with the raw JSON object matching the provided schema. Do not include markdown formatting (e.g., \`\`\`json), any introductory text, or any other conversational filler. The output must be a valid JSON object and nothing else.`;
+    const systemInstruction: string = `You are a world-class interior designer AI. Your task is to analyze the user's room image and generate a set of questions to help them redesign it.
+    1.  **Analyze the image:** Briefly describe the room's current state in your "Designer's Notes".
+    2.  **Identify Objects:** Identify specific objects or areas in the room (e.g., ceiling, specific furniture, windows, flooring, walls).
+    3.  **Generate Detailed Questions:** Create 5 to 7 multiple-choice questions about design preferences. Ask about the overall style, but also include specific questions about the objects you identified. For example, if you see a bed, ask about the mattress or headboard. If you see a fan, ask if it should be replaced. Be specific and creative.
+    4.  **Output:** Respond ONLY with the raw JSON object matching the provided schema. Do not include markdown formatting (e.g., \`\`\`json), any introductory text, or any other conversational filler. The output must be a valid JSON object and nothing else.`;
 
     // 5. This is the main change. Your `genAI.models.generateContent` call is correct,
     //    but `generationConfig` and `systemInstruction` must be nested inside `config`.
