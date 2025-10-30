@@ -1,71 +1,97 @@
-# 10x Interior Designer
+# 🎨 10x AI Interior Designer
 
-The 10x Interior Designer is a web application that allows users to upload a photo of their room and receive AI-generated interior design ideas. The application analyzes the room, asks the user a series of questions about their preferences, and then generates new designs based on their answers.
+Instantly redesign your room with the power of AI! ✨ Simply upload a photo of any room, and our AI-powered interior designer will analyze the space, ask you a few smart questions about your style, and generate stunning, photorealistic design concepts. It preserves the core structure of your room, making the new designs feel realistic and achievable.
 
-## Features
+---
 
-*   **Image Upload**: Upload an image of your room to get started.
-*   **AI Analysis**: The application uses the Gemini AI model to analyze the room and generate a set of questions.
-*   **Dynamic Questionnaire**: Answer a series of questions about your design preferences.
-*   **AI-Powered Design Generation**: The application uses the Gemini AI model to generate new interior designs based on your answers.
-*   **Server-Side Caching**: The application uses a server-side, file-based caching system to store the analysis of uploaded images, avoiding redundant API calls.
-*   **Clear Cache**: A "Clear Cache" button on the results page allows for manual cache invalidation.
-*   **Skeleton Loaders**: Skeleton placeholders are displayed on the results page to provide a better user experience while new images are being generated.
+<!-- You can add a screenshot or GIF of the application in action here -->
+<!-- ![App Screenshot](link-to-your-screenshot.png) -->
 
-## Tech Stack
+## ✨ Features
 
-*   [Next.js](https://nextjs.org/)
-*   [React](https://reactjs.org/)
-*   [TypeScript](https://www.typescriptlang.org/)
-*   [Tailwind CSS](https://tailwindcss.com/)
-*   [Google Generative AI (Gemini)](https://ai.google.dev/)
+*   📸 **Effortless Image Upload:** Drag-and-drop, paste from clipboard, or browse your files.
+*   🧠 **Smart AI Analysis:** Uses Google's Gemini model to understand your room's layout, furniture, and style.
+*   📝 **Dynamic Questionnaire:** Get a unique set of questions tailored to your specific room to fine-tune your preferences.
+*   🎨 **AI-Powered Redesigns:** Generate multiple, high-quality design variations based on your feedback.
+*   ⚡ **Server-Side Caching:** Upload the same image again and get instant results without waiting for the AI analysis.
+*   💀 **Skeleton Loaders:** A smooth loading experience ensures you see generated images as they become available.
+*   🗑️ **Cache Management:** Easily clear the server's analysis cache directly from the UI.
 
-## Getting Started
+## 🚀 Tech Stack
+
+*   **Framework:** [Next.js](https://nextjs.org/) 14+ (App Router)
+*   **Language:** [TypeScript](https://www.typescriptlang.org/)
+*   **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+*   **AI:** [Google Gemini API](https://ai.google.dev/)
+*   **Deployment:** [Docker](https://www.docker.com/)
+
+## 🛠️ Getting Started
 
 To get a local copy up and running, follow these simple steps.
 
 ### Prerequisites
 
+*   Node.js (v20 or later)
 *   npm
-    ```sh
-    npm install npm@latest -g
-    ```
+*   A Google Gemini API Key. You can get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-### Installation
+### Installation & Setup
 
-1.  Clone the repo
-    ```sh
+1.  **Clone the repository:**
+    ```bash
     git clone https://github.com/stenalpjolly/interiordesigner.git
+    cd interiordesigner
     ```
-2.  Install NPM packages
-    ```sh
+
+2.  **Install dependencies:**
+    ```bash
     npm install
     ```
-3.  Create a `.env.local` file in the root of the project and add your Gemini API key:
+
+3.  **Set up your environment variables:**
+    Create a file named `.env.local` in the root of the project and add your API key:
     ```
-    GEMINI_API_KEY=your_api_key
+    GEMINI_API_KEY=your_super_secret_api_key
     ```
 
-### Running the Application
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
 
-```bash
-npm run dev
+Open [http://localhost:3000](http://localhost:3000) in your browser and start designing! 🛋️
+
+## 🐳 Running with Docker
+
+Prefer to use Docker? No problem!
+
+1.  **Build the image:**
+    Make sure to pass your Gemini API key as a build argument.
+    ```bash
+    docker build --build-arg GEMINI_API_KEY="your_super_secret_api_key" -t 10x-interior-designer .
+    ```
+
+2.  **Run the container:**
+    ```bash
+    docker run -p 3000:3000 10x-interior-designer
+    ```
+The application will be available at [http://localhost:3000](http://localhost:3000).
+
+## 📂 Project Structure
+
+A quick overview of the key directories:
+
+```
+/src
+├── /app
+│   ├── /api          # Server-side API routes (analyze, generate, clearcache)
+│   └── page.tsx      # Main entry point for the application UI
+├── /components       # Reusable React components (UploadScreen, ResultScreen, etc.)
+└── /lib              # Shared utilities and React Context (AppContext)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Future Ideas
 
-## Docker
-
-You can also run the application using Docker.
-
-### Build the Docker Image
-
-```bash
-docker build --build-arg GEMINI_API_KEY="your_api_key" -t interiordesigner .
-```
-
-### Run the Docker Container
-
-```bash
-docker run -p 3000:3000 interiordesigner
-```
+*   **Interactive Masking:** Allow users to select specific items to keep or replace.
+*   **Style & Brand Library:** Offer preset style buttons (e.g., "Scandinavian", "Industrial").
+*   **"Shop the Look":** Use AI to identify furniture and find matching products online.
