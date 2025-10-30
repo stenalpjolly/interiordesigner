@@ -6,6 +6,7 @@ interface AnalysisData {
   questions: {
     question: string;
     options: string[];
+    type: 'single' | 'multiple';
   }[];
 }
 
@@ -13,9 +14,10 @@ interface QuestionsScreenProps {
   analysisData: AnalysisData;
   imageData: string;
   onSubmit: (answers: Record<string, string>, variantCount: number) => void;
+  error?: string | null;
 }
 
-export default function QuestionsScreen({ analysisData, imageData, onSubmit }: QuestionsScreenProps) {
+export default function QuestionsScreen({ analysisData, imageData, onSubmit, error }: QuestionsScreenProps) {
   const [variantCount, setVariantCount] = useState(2);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -25,9 +27,16 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit }: Q
     const answers: Record<string, string> = {};
     analysisData.questions.forEach((q, index) => {
       const questionId = `question-${index}`;
-      const answer = formData.get(questionId) as string;
-      if (answer) {
-        answers[q.question] = answer;
+      if (q.type === 'multiple') {
+        const selectedOptions = formData.getAll(questionId) as string[];
+        if (selectedOptions.length > 0) {
+          answers[q.question] = selectedOptions.join(', ');
+        }
+      } else {
+        const answer = formData.get(questionId) as string;
+        if (answer) {
+          answers[q.question] = answer;
+        }
       }
     });
     onSubmit(answers, variantCount);
@@ -35,6 +44,14 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit }: Q
 
   return (
     <div className="w-full mx-auto animate-fade-in">
+      {error && (
+        <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 text-red-300 rounded-lg text-sm flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <span><strong>Error:</strong> {error}</span>
+        </div>
+      )}
       <div className="text-center mb-10">
         <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Refine Your Vision</h2>
         <p className="mt-2 text-lg text-gray-400">Your answers will guide the AI's creative process.</p>
@@ -61,20 +78,22 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit }: Q
         {/* Right Column: Questions Form */}
         <form id="questions-form" onSubmit={handleSubmit} className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
           {analysisData.questions.map((q, index) => (
-            <div key={index} className="bg-gray-800/50 p-5 rounded-lg border border-gray-700/50 transform transition-transform duration-300 hover:scale-105 hover:border-blue-500">
-              <p className="font-semibold mb-4 text-lg text-gray-200">{index + 1}. {q.question}</p>
+            <div key={index} className="bg-gray-800/50 p-5 rounded-lg border border-gray-700/50 transform transition-transform duration-200 hover:scale-[1.02] hover:border-blue-500/70">
+              <p className="font-semibold mb-1 text-lg text-gray-200">{index + 1}. {q.question}</p>
+              {q.type === 'multiple' && <p className="text-xs text-gray-400 mb-4"> (Select all that apply)</p>}
+              
               <div className="grid grid-cols-1 gap-3">
                 {q.options.map((option, optIndex) => (
                   <label key={optIndex} htmlFor={`q-${index}-o-${optIndex}`} className="block">
                     <input
-                      type="radio"
+                      type={q.type === 'multiple' ? 'checkbox' : 'radio'}
                       id={`q-${index}-o-${optIndex}`}
                       name={`question-${index}`}
                       value={option}
-                      defaultChecked={optIndex === 0}
+                      defaultChecked={q.type === 'single' && optIndex === 0}
                       className="hidden peer"
                     />
-                    <span className="block w-full text-center py-3 px-2 rounded-md bg-gray-700/50 text-gray-300 cursor-pointer transition duration-200 border border-transparent hover:bg-gray-600/50 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:font-semibold peer-checked:border-blue-400">
+                    <span className="flex items-center justify-center w-full text-center py-3 px-4 rounded-md bg-gray-700/50 text-gray-300 cursor-pointer transition-all duration-150 border-2 border-transparent hover:border-blue-500/50 active:scale-95 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:font-semibold peer-checked:border-blue-400">
                       {option}
                     </span>
                   </label>

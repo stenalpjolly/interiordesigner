@@ -7,7 +7,7 @@ import QuestionsScreen from '@/components/QuestionsScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export default function QuestionsPage() {
-  const { analysisData, imageBase64, setResultImages, setError } = useAppContext();
+  const { analysisData, imageBase64, setResultImages, setError, setUserAnswers } = useAppContext();
   const router = useRouter();
   
   useEffect(() => {
@@ -17,7 +17,8 @@ export default function QuestionsPage() {
   }, [analysisData, imageBase64, router]);
 
   const handleQuestionsSubmit = async (answers: Record<string, string>, count: number) => {
-    // TODO: Implement loading state management
+    setUserAnswers(answers);
+    setError(null);
     try {
       const generationPromises = Array.from({ length: count }, () =>
         fetch('/api/generate', {
@@ -37,15 +38,25 @@ export default function QuestionsPage() {
         })
       );
 
-      const results = await Promise.all(generationPromises);
-      const images = results.map(result => result.image).filter(Boolean);
+      const results = await Promise.allSettled(generationPromises);
       
-      if (images.length === 0) {
-        throw new Error("Image generation failed to produce any results.");
-      }
+      const successfulImages = results
+        .filter((result): result is PromiseFulfilledResult<{ image: string }> => result.status === 'fulfilled' && result.value.image)
+        .map(result => result.value.image);
 
-      setResultImages(images);
-      router.push('/results');
+      const failedReasons = results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map(result => result.reason.message);
+
+      if (successfulImages.length > 0) {
+        setResultImages(successfulImages);
+        if (failedReasons.length > 0) {
+          setError(`Could not generate all images. Failed: ${failedReasons.length}`);
+        }
+        router.push('/results');
+      } else {
+        setError(`Image generation failed. Reasons: ${failedReasons.join(', ')}`);
+      }
     } catch (err) {
       const error = err as Error;
       setError(error.message);
@@ -56,5 +67,5 @@ export default function QuestionsPage() {
     return <LoadingScreen text="Loading..." />;
   }
 
-  return <QuestionsScreen analysisData={analysisData} imageData={imageBase64} onSubmit={handleQuestionsSubmit} />;
+  return <QuestionsScreen analysisData={analysisData} imageData={imageBase64} onSubmit={handleQuestionsSubmit} error={error} />;
 }
