@@ -34,7 +34,7 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit }: Q
   };
 
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in">
+    <div className="w-full mx-auto animate-fade-in">
       <div className="text-center mb-10">
         <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Refine Your Vision</h2>
         <p className="mt-2 text-lg text-gray-400">Your answers will guide the AI's creative process.</p>

@@ -121,6 +121,8 @@ export default function HomePage() {
     }
   };
 
+  const containerMaxWidth = screen === 'questions' || screen === 'results' ? 'max-w-7xl' : 'max-w-xl';
+
   return (
     <main className="text-white min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-gray-900 font-sans">
       <div className="w-full max-w-md text-center mb-8 mt-8">
@@ -132,7 +134,7 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-xl transition-all duration-500">
+      <div className={`bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 p-6 sm:p-8 rounded-2xl shadow-2xl w-full ${containerMaxWidth} transition-all duration-500`}>
         {error && (
           <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 text-red-300 rounded-lg text-sm flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
