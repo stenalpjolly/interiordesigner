@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { useAppContext } from '@/lib/AppContext';
 import LoadingScreen from './LoadingScreen';
+import SkeletonLoader from './SkeletonLoader';
 
 interface ResultScreenProps {
   images: string[];
@@ -10,7 +11,7 @@ interface ResultScreenProps {
 
 export default function ResultScreen({ images, onStartOver }: ResultScreenProps) {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(0);
   const [cacheStatus, setCacheStatus] = useState('');
   const { userAnswers, analysisData, resultImages, setResultImages, error, setError } = useAppContext();
 
@@ -20,7 +21,7 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
       return;
     }
 
-    setLoading(true);
+    setLoadingMore(1);
     setError(null);
     try {
       const response = await fetch('/api/generate', {
@@ -41,7 +42,7 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
     } catch (error) {
       setError((error as Error).message);
     } finally {
-      setLoading(false);
+      setLoadingMore(0);
     }
   };
 
@@ -50,7 +51,7 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
       setError("Could not generate a variation. Please start over.");
       return;
     }
-    setLoading(true);
+    setLoadingMore(1);
     setError(null);
     try {
       const response = await fetch('/api/generate', {
@@ -75,7 +76,7 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
     } catch (error) {
       setError((error as Error).message);
     } finally {
-      setLoading(false);
+      setLoadingMore(0);
     }
   };
 
@@ -93,10 +94,6 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
     }
     setTimeout(() => setCacheStatus(''), 3000);
   };
-
-  if (loading) {
-    return <LoadingScreen text="Generating more designs..." />;
-  }
 
   return (
     <div className="max-w-5xl mx-auto z-10 relative">
@@ -135,6 +132,9 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
               </button>
             </div>
           </div>
+        ))}
+        {Array.from({ length: loadingMore }).map((_, index) => (
+          <SkeletonLoader key={index} />
         ))}
       </div>
       
