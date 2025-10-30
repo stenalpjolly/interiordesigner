@@ -4,7 +4,6 @@ import {
   GoogleGenAI,
   HarmCategory,
   HarmBlockThreshold,
-  GenerationConfig, // We'll use this type, but pass it differently
   Part,
 } from '@google/genai';
 

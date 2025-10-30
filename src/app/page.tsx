@@ -43,8 +43,9 @@ export default function HomePage() {
       const data = await response.json();
       setAnalysisData(data);
       setScreen('questions');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message);
       setScreen('upload'); // Go back to upload on error
     }
   };
@@ -83,8 +84,9 @@ export default function HomePage() {
 
       setResultImages(images);
       setScreen('results');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message);
       setScreen('questions'); // Go back to questions on error
     }
   };
@@ -97,37 +99,55 @@ export default function HomePage() {
     setError(null);
   };
 
-  return (
-    <main className="text-white min-h-screen flex items-center justify-center p-4 bg-gray-900 font-sans">
-      <div className="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-2xl">
-        <h1 className="text-3xl font-bold text-center mb-2 text-blue-400">10x Interior Designer</h1>
-        <p className="text-center text-gray-400 mb-6">Upload a photo of your room to begin</p>
+  const getScreenContent = () => {
+    switch (screen) {
+      case 'upload':
+        return <UploadScreen onImageUpload={handleImageUpload} />;
+      case 'analyzing':
+        return <LoadingScreen text="Analyzing Your Room..." subtext="Our AI is getting to know your space." />;
+      case 'questions':
+        if (analysisData && imageBase64) {
+          return <QuestionsScreen analysisData={analysisData} imageData={imageBase64} onSubmit={handleQuestionsSubmit} />;
+        }
+        // Fallback or error state if data is missing
+        handleStartOver();
+        return null;
+      case 'generating':
+        return <LoadingScreen text="Generating Your Designs..." subtext={`Creating ${variantCount} unique option${variantCount > 1 ? 's' : ''}. Please wait.`} />;
+      case 'results':
+        return <ResultScreen images={resultImages} onStartOver={handleStartOver} />;
+      default:
+        return <UploadScreen onImageUpload={handleImageUpload} />;
+    }
+  };
 
+  return (
+    <main className="text-white min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-gray-900 font-sans">
+      <div className="w-full max-w-md text-center mb-8 mt-8">
+        <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
+          AI Interior Designer
+        </h1>
+        <p className="text-lg sm:text-xl text-gray-400 mt-2">
+          Instantly redesign any room in your home.
+        </p>
+      </div>
+
+      <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-xl transition-all duration-500">
         {error && (
-          <div className="mt-4 p-4 bg-red-800 border border-red-700 text-red-200 rounded-lg">
-            {`Error: ${error}`}
+          <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 text-red-300 rounded-lg text-sm flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span><strong>Error:</strong> {error}</span>
           </div>
         )}
-
-        {screen === 'upload' && <UploadScreen onImageUpload={handleImageUpload} />}
         
-        {screen === 'analyzing' && <LoadingScreen text="Analyzing your room..." subtext="Our 10x designer is getting to know your space." />}
-        
-        {screen === 'questions' && analysisData && imageBase64 && (
-          <QuestionsScreen 
-            analysisData={analysisData} 
-            imageData={imageBase64}
-            onSubmit={handleQuestionsSubmit} 
-          />
-        )}
-        
-        {screen === 'generating' && <LoadingScreen text="Generating your designs..." subtext={`Creating ${variantCount} unique option${variantCount > 1 ? 's' : ''}. Please wait.`} />}
-        
-        {screen === 'results' && resultImages.length > 0 && (
-          <ResultScreen images={resultImages} onStartOver={handleStartOver} />
-        )}
-
+        {getScreenContent()}
       </div>
+      
+      <footer className="text-center text-gray-500 text-sm mt-8 mb-4">
+        <p>&copy; {new Date().getFullYear()} 10x Interior Designer. All rights reserved.</p>
+      </footer>
     </main>
   );
 }
