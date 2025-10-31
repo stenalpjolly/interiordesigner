@@ -10,9 +10,13 @@ Instantly redesign your room with the power of AI! ✨ Simply upload a photo of 
 ## ✨ Features
 
 *   📸 **Effortless Image Upload:** Drag-and-drop, paste from clipboard, or browse your files.
-*   🧠 **Smart AI Analysis:** Uses Google's Gemini model to understand your room's layout, furniture, and style.
-*   📝 **Dynamic Questionnaire:** Get a unique set of questions tailored to your specific room to fine-tune your preferences.
-*   🎨 **AI-Powered Redesigns:** Generate multiple, high-quality design variations based on your feedback.
+*   🧠 **Smart AI Analysis:** Uses Google's Gemini model to understand your room's layout, furniture, and style, including walls, ceilings, and doors.
+*   📝 **Dynamic Questionnaire:** Get a unique set of questions with interactive hotspots on your image to fine-tune your preferences.
+*   🎨 **AI-Powered Redesigns:** Generate multiple, high-quality design variations in parallel based on your feedback.
+*   🔍 **Pixel-Perfect Comparison:**
+    *   Select any two generated designs for a side-by-side comparison with a slider.
+    *   Click a single image to compare it directly against your original photo.
+*   🖼️ **Responsive Gallery:** View your new designs in a beautiful, responsive grid that adapts to your screen size.
 *   ⚡ **Server-Side Caching:** Upload the same image again and get instant results without waiting for the AI analysis.
 *   💀 **Skeleton Loaders:** A smooth loading experience ensures you see generated images as they become available.
 *   🗑️ **Cache Management:** Easily clear the server's analysis cache directly from the UI.
