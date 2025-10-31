@@ -26,15 +26,24 @@ export async function POST(req: NextRequest) {
       designerNotes: { type: "STRING", description: "A brief, friendly analysis of the room's style, layout, and key features (e.g., lighting, focal points)." },
       questions: {
         type: "ARRAY",
-        description: "A list of at least 10 questions to help the user customize their design.",
+        description: "A list of at least 5 questions to help the user customize their design.",
         items: {
           type: "OBJECT",
           properties: {
             question: { type: "STRING", description: "The question for the user (e.g., 'What style are you drawn to?')." },
             options: { type: "ARRAY", description: "A list of 3-5 concise, one-or-two-word options for the user to choose from.", items: { type: "STRING" } },
             type: { type: "STRING", description: "The type of question: 'single' for radio buttons (only one answer) or 'multiple' for checkboxes (multiple answers allowed).", enum: ["single", "multiple"] },
+            coordinates: {
+              type: "OBJECT",
+              description: "The x and y coordinates (as percentages from 0 to 100) for placing a hotspot on the image, corresponding to the most relevant area for this question.",
+              properties: {
+                x: { type: "NUMBER", description: "The percentage from the left edge of the image (0-100)." },
+                y: { type: "NUMBER", description: "The percentage from the top edge of the image (0-100)." }
+              },
+              required: ["x", "y"]
+            }
           },
-          required: ["question", "options", "type"],
+          required: ["question", "options", "type", "coordinates"],
         },
       },
     },
@@ -84,10 +93,11 @@ export async function POST(req: NextRequest) {
 
     const systemInstruction: string = `You are a world-class interior designer AI. Your task is to analyze the user's room image and generate a set of questions to help them redesign it.
     1.  **Analyze the image:** Briefly describe the room's current state in your "Designer's Notes".
-    2.  **Identify Objects:** Identify specific objects or areas in the room (e.g., ceiling, specific furniture, windows, flooring, walls).
-    3.  **Generate Detailed Questions:** Create a minimum of 10 multiple-choice questions about design preferences. Ask about the overall style, but also include specific questions about the objects you identified. For example, if you see a bed, ask about the mattress or headboard. If you see a fan, ask if it should be replaced. Be specific and creative.
-    4.  **Determine Question Type:** For each question, decide if it should be 'single' choice (like choosing one style) or 'multiple' choice (like selecting multiple colors or features). Set the 'type' property accordingly.
-    5.  **Output:** Respond ONLY with the raw JSON object matching the provided schema. Do not include markdown formatting (e.g., \`\`\`json), any introductory text, or any other conversational filler. The output must be a valid JSON object and nothing else.`;
+    2.  **Identify Objects & Areas:** Identify specific objects or areas in the room (e.g., ceiling, specific furniture, windows, flooring, walls).
+    3.  **Generate Contextual Questions:** Create a minimum of 5 multiple-choice questions about design preferences. Each question MUST be directly related to a specific object or area you identified.
+    4.  **Assign Coordinates:** For EACH question, provide the x and y coordinates (as percentages from 0 to 100) for a hotspot. The hotspot should be placed on the object or area the question is about. For example, a question about flooring should have coordinates pointing to the floor. A question about a specific chair should have coordinates on that chair.
+    5.  **Determine Question Type:** For each question, decide if it should be 'single' choice (like choosing one style) or 'multiple' choice (like selecting multiple colors or features). Set the 'type' property accordingly.
+    6.  **Output:** Respond ONLY with the raw JSON object matching the provided schema. Do not include markdown formatting (e.g., \`\`\`json), any introductory text, or any other conversational filler. The output must be a valid JSON object and nothing else.`;
 
     const result = await genAI.models.generateContent({
       model: MODEL_NAME,

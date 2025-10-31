@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface AnalysisData {
   designerNotes: string;
@@ -7,6 +7,10 @@ interface AnalysisData {
     question: string;
     options: string[];
     type: 'single' | 'multiple';
+    coordinates: {
+      x: number;
+      y: number;
+    };
   }[];
 }
 
@@ -19,31 +23,86 @@ interface QuestionsScreenProps {
 
 export default function QuestionsScreen({ analysisData, imageData, onSubmit, error }: QuestionsScreenProps) {
   const [variantCount, setVariantCount] = useState(2);
+  const [customAnswers, setCustomAnswers] = useState<Record<number, string>>({});
+  const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleHotspotClick = (index: number) => {
+    const questionElement = questionRefs.current[index];
+    const scrollContainer = scrollContainerRef.current;
+
+    if (questionElement && scrollContainer) {
+      const offsetTop = questionElement.offsetTop;
+      scrollContainer.scrollTo({
+        top: offsetTop - 20, // A small offset from the top
+        behavior: 'smooth',
+      });
+
+      questionElement.classList.add('highlight');
+      setTimeout(() => {
+        questionElement.classList.remove('highlight');
+      }, 1500);
+    }
+  };
+
+  const handleCustomAnswerChange = (index: number, value: string) => {
+    setCustomAnswers(prev => ({ ...prev, [index]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
     const answers: Record<string, string> = {};
+
     analysisData.questions.forEach((q, index) => {
       const questionId = `question-${index}`;
+      let selectedOptions: string[] = [];
+
       if (q.type === 'multiple') {
-        const selectedOptions = formData.getAll(questionId) as string[];
-        if (selectedOptions.length > 0) {
-          answers[q.question] = selectedOptions.join(', ');
-        }
+        selectedOptions = formData.getAll(questionId) as string[];
       } else {
-        const answer = formData.get(questionId) as string;
-        if (answer) {
-          answers[q.question] = answer;
+        const singleAnswer = formData.get(questionId) as string;
+        if (singleAnswer) {
+          selectedOptions.push(singleAnswer);
         }
       }
+      
+      const customOptionValue = `custom-${index}`;
+      if (selectedOptions.includes(customOptionValue) && customAnswers[index]) {
+        const otherIndex = selectedOptions.indexOf(customOptionValue);
+        selectedOptions[otherIndex] = customAnswers[index].trim();
+      }
+
+      const finalOptions = selectedOptions.filter(opt => opt !== customOptionValue && opt.trim() !== '');
+
+      if (finalOptions.length > 0) {
+        answers[q.question] = finalOptions.join(', ');
+      }
     });
+
     onSubmit(answers, variantCount);
   };
 
   return (
     <div className="w-full mx-auto animate-fade-in">
+      <style jsx>{`
+        .highlight {
+          animation: highlight-anim 1.5s ease-out;
+        }
+        @keyframes highlight-anim {
+          0% {
+            transform: scale(1.02);
+            border-color: rgba(59, 130, 246, 0.7);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+          }
+          100% {
+            transform: scale(1);
+            border-color: #4B5563;
+            box-shadow: none;
+          }
+        }
+      `}</style>
       {error && (
         <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 text-red-300 rounded-lg text-sm flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -52,58 +111,16 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
           <span><strong>Error:</strong> {error}</span>
         </div>
       )}
-      <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Refine Your Vision</h2>
-        <p className="mt-2 text-lg text-gray-400">Your answers will guide the AI's creative process.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Notes and Image */}
-        <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-10 lg:self-start">
-          <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700/50">
-            <h3 className="font-semibold text-blue-300 mb-2 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 003 15h14a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" /></svg>
-              AI Designer&apos;s Notes
-            </h3>
-            <p className="text-gray-300 italic text-sm">{analysisData.designerNotes}</p>
-          </div>
-
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
-            <div className="p-2">
-              <Image src={imageData} alt="Room preview" width={800} height={800} className="rounded-md w-full h-auto object-contain bg-gray-800" />
-            </div>
-          </div>
+      
+      <form onSubmit={handleSubmit}>
+        <div className="text-center mb-4">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Refine Your Vision</h2>
+          <p className="mt-2 text-lg text-gray-400">Your answers will guide the AI's creative process. All questions are optional.</p>
         </div>
-        
-        {/* Right Column: Questions Form */}
-        <form id="questions-form" onSubmit={handleSubmit} className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {analysisData.questions.map((q, index) => (
-            <div key={index} className="bg-gray-800/50 p-5 rounded-lg border border-gray-700/50 transform transition-transform duration-200 hover:scale-[1.02] hover:border-blue-500/70">
-              <p className="font-semibold mb-1 text-lg text-gray-200">{index + 1}. {q.question}</p>
-              {q.type === 'multiple' && <p className="text-xs text-gray-400 mb-4"> (Select all that apply)</p>}
-              
-              <div className="grid grid-cols-1 gap-3">
-                {q.options.map((option, optIndex) => (
-                  <label key={optIndex} htmlFor={`q-${index}-o-${optIndex}`} className="block">
-                    <input
-                      type={q.type === 'multiple' ? 'checkbox' : 'radio'}
-                      id={`q-${index}-o-${optIndex}`}
-                      name={`question-${index}`}
-                      value={option}
-                      defaultChecked={q.type === 'single' && optIndex === 0}
-                      className="hidden peer"
-                    />
-                    <span className="flex items-center justify-center w-full text-center py-3 px-4 rounded-md bg-gray-700/50 text-gray-300 cursor-pointer transition-all duration-150 border-2 border-transparent hover:border-blue-500/50 active:scale-95 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:font-semibold peer-checked:border-blue-400">
-                      {option}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
 
-          <div className="sm:col-span-2 bg-gray-800/50 p-4 rounded-lg flex items-center justify-between border border-gray-700/50">
-            <label htmlFor="variant-count" className="font-semibold text-gray-300">How many designs?</label>
+        <div className="bg-gray-800/30 p-4 rounded-lg flex items-center justify-end gap-4 mb-6 border border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <label htmlFor="variant-count" className="font-semibold text-gray-300 text-sm">How many designs?</label>
             <select
               id="variant-count"
               value={variantCount}
@@ -116,12 +133,101 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
               <option value="4">4</option>
             </select>
           </div>
-
-          <button type="submit" className="sm:col-span-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg transition duration-200 text-lg shadow-lg hover:shadow-blue-500/50">
-            Generate My Designs
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200 shadow-lg hover:shadow-blue-500/50">
+            Generate
           </button>
-        </form>
-      </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" style={{ height: 'calc(80vh - 80px)' }}>
+          {/* Left Column: Image & Notes */}
+          <div className="flex flex-col gap-6 h-full">
+            <div className="relative flex-1 min-h-0 rounded-lg border border-gray-700/50">
+              <Image src={imageData} alt="Room preview" layout="fill" objectFit="contain" className="rounded-lg" />
+              {analysisData.questions.map((q, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleHotspotClick(index)}
+                  className="absolute w-8 h-8 rounded-full flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 bg-blue-500/80 backdrop-blur-sm border-2 border-white/50 hover:scale-125 transition-transform duration-200 animate-pulse"
+                  style={{ left: `${q.coordinates.x}%`, top: `${q.coordinates.y}%` }}
+                  aria-label={`Go to question ${index + 1}`}
+                >
+                  <span className="font-bold text-white text-sm">{index + 1}</span>
+                </button>
+              ))}
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700/50 flex-shrink-0 max-h-[25%] overflow-y-auto">
+              <h3 className="font-semibold text-blue-300 mb-2 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 003 15h14a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" /></svg>
+                AI Designer&apos;s Notes
+              </h3>
+              <p className="text-gray-300 italic text-sm">{analysisData.designerNotes}</p>
+            </div>
+          </div>
+          
+          {/* Right Column: Questions */}
+          <div ref={scrollContainerRef} className="h-full overflow-y-auto pr-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {analysisData.questions.map((q, index) => {
+                const customOptionId = `custom-input-${index}`;
+                return (
+                  <div 
+                    key={index} 
+                    ref={el => questionRefs.current[index] = el}
+                    className="bg-gray-800/50 p-5 rounded-lg border border-gray-700/50 h-fit"
+                  >
+                    <p className="font-semibold mb-1 text-lg text-gray-200">{index + 1}. {q.question}</p>
+                    {q.type === 'multiple' && <p className="text-xs text-gray-400 mb-4">(Select all that apply)</p>}
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {q.options.map((option, optIndex) => (
+                        <label key={optIndex} className="block">
+                          <input
+                            type={q.type === 'multiple' ? 'checkbox' : 'radio'}
+                            name={`question-${index}`}
+                            value={option}
+                            className="hidden peer"
+                          />
+                          <span className="flex items-center justify-center w-full text-center py-3 px-4 rounded-md bg-gray-700/50 text-gray-300 cursor-pointer transition-all duration-150 border-2 border-transparent hover:border-blue-500/50 active:scale-95 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:font-semibold peer-checked:border-blue-400">
+                            {option}
+                          </span>
+                        </label>
+                      ))}
+                      <label className="block">
+                        <input
+                          type={q.type === 'multiple' ? 'checkbox' : 'radio'}
+                          name={`question-${index}`}
+                          value={`custom-${index}`}
+                          className="hidden peer"
+                          id={`custom-checkbox-${index}`}
+                        />
+                        <span className="flex items-center justify-center w-full text-center py-3 px-4 rounded-md bg-gray-700/50 text-gray-300 cursor-pointer transition-all duration-150 border-2 border-transparent hover:border-blue-500/50 active:scale-95 peer-checked:bg-yellow-600 peer-checked:text-white peer-checked:font-semibold peer-checked:border-yellow-400">
+                          Other...
+                        </span>
+                      </label>
+                    </div>
+                    
+                    <div className="mt-3">
+                      <input
+                        type="text"
+                        id={customOptionId}
+                        value={customAnswers[index] || ''}
+                        onChange={(e) => handleCustomAnswerChange(index, e.target.value)}
+                        onClick={() => {
+                          const customCheckbox = document.getElementById(`custom-checkbox-${index}`) as HTMLInputElement;
+                          if (customCheckbox) customCheckbox.checked = true;
+                        }}
+                        placeholder="Type your custom answer..."
+                        className="w-full bg-gray-700 border-gray-600 text-white text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block p-2.5 transition-opacity duration-300"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </form>
     </div>
   );
 }

@@ -150,7 +150,7 @@ export default function HomePage() {
       <div className="absolute top-0 left-0 p-4">
         <h1 className="text-2xl font-bold tracking-tight">10x Interior Designer</h1>
       </div>
-      <div className="w-full max-w-4xl">
+      <div className="w-[90%]">
         {getScreenContent()}
       </div>
     </main>
