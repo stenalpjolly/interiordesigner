@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useAppContext } from '@/lib/AppContext';
 import LoadingScreen from './LoadingScreen';
 import SkeletonLoader from './SkeletonLoader';
+import ImageComparison from './ImageComparison';
 
 interface ResultScreenProps {
   images: string[];
@@ -10,11 +11,25 @@ interface ResultScreenProps {
 }
 
 export default function ResultScreen({ images, onStartOver }: ResultScreenProps) {
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [zoomedImageForComparison, setZoomedImageForComparison] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(0);
   const [cacheStatus, setCacheStatus] = useState('');
-  const { userAnswers, analysisData, resultImages, setResultImages, error, setError } = useAppContext();
+  const { userAnswers, analysisData, resultImages, setResultImages, error, setError, imageBase64 } = useAppContext();
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
 
+  const handleSelectImage = (image: string) => {
+    setSelectedImages(prev => {
+      if (prev.includes(image)) {
+        return prev.filter(i => i !== image);
+      }
+      if (prev.length < 2) {
+        return [...prev, image];
+      }
+      return prev;
+    });
+  };
+  
   const handleGenerateMore = async () => {
     if (!images[0] || !analysisData || !analysisData.designerNotes || !userAnswers) {
       setError("Could not generate more designs because the session data is incomplete. Please start over.");
@@ -137,7 +152,19 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
       
       <div className={`grid gap-8 ${images.length === 1 ? 'grid-cols-1 max-w-lg mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
         {images.map((image, index) => (
-          <div key={index} className="group relative bg-gray-800/50 rounded-xl shadow-lg overflow-hidden" onClick={() => setZoomedImage(image)}>
+          <div key={index} className="group relative bg-gray-800/50 rounded-xl shadow-lg overflow-hidden cursor-pointer" onClick={() => setZoomedImageForComparison(image)}>
+             <div 
+              className="absolute top-2 right-2 z-20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input 
+                type="checkbox" 
+                className="h-6 w-6 rounded bg-gray-700/50 border-gray-500 text-blue-500 focus:ring-blue-500/50"
+                checked={selectedImages.includes(image)}
+                onChange={() => handleSelectImage(image)}
+                disabled={selectedImages.length >= 2 && !selectedImages.includes(image)}
+              />
+            </div>
             <Image
               src={image}
               alt={`Generated Design ${index + 1}`}
@@ -164,6 +191,11 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
         <button type="button" onClick={onStartOver} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-lg transition duration-200">
           Start Over
         </button>
+        {selectedImages.length === 2 && (
+          <button type="button" onClick={() => setShowComparison(true)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200">
+            Compare Selected
+          </button>
+        )}
         <button type="button" onClick={handleGenerateMore} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200">
           Generate More
         </button>
@@ -172,29 +204,21 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
         </button>
       </div>
 
-      {zoomedImage && (
-        <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
-          onClick={() => setZoomedImage(null)}
-        >
-          <div className="relative">
-            <Image
-              src={zoomedImage}
-              alt="Zoomed design"
-              width={1200}
-              height={1200}
-              className="rounded-lg shadow-2xl max-w-[90vw] max-h-[90vh] object-contain"
-            />
-            <button
-              className="absolute -top-2 -right-2 text-white bg-gray-800/50 rounded-full p-1 hover:bg-gray-700"
-              onClick={() => setZoomedImage(null)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
+      {zoomedImageForComparison && imageBase64 && (
+        <ImageComparison 
+          images={[imageBase64, zoomedImageForComparison]} 
+          onClose={() => setZoomedImageForComparison(null)} 
+        />
+      )}
+      
+      {showComparison && selectedImages.length === 2 && (
+        <ImageComparison 
+          images={selectedImages as [string, string]} 
+          onClose={() => {
+            setShowComparison(false);
+            setSelectedImages([]);
+          }} 
+        />
       )}
     </div>
   );
