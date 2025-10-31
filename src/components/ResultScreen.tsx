@@ -21,24 +21,39 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
       return;
     }
 
-    setLoadingMore(1);
+    const numToGenerate = 4;
+    setLoadingMore(numToGenerate);
     setError(null);
+
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          originalImage: images[0], // Use the first generated image as the base
-          designerNotes: analysisData.designerNotes,
-          userAnswers: userAnswers,
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate more images');
+      const generationPromises = Array.from({ length: numToGenerate }).map(() =>
+        fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            originalImage: images[0], // Use the first generated image as the base
+            designerNotes: analysisData.designerNotes,
+            userAnswers: userAnswers,
+          }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'Failed to generate more images');
+          }
+          return res.json();
+        })
+      );
+
+      const results = await Promise.all(generationPromises);
+      const newImages = results.map(data => data.image).filter(Boolean);
+      
+      if (newImages.length > 0) {
+        setResultImages(prevImages => [...prevImages, ...newImages]);
       }
-      const data = await response.json();
-      setResultImages(prevImages => [...prevImages, data.image]);
+      if (newImages.length < numToGenerate) {
+        setError(`Successfully generated ${newImages.length} new designs, but ${numToGenerate - newImages.length} failed.`);
+      }
+
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -51,28 +66,38 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
       setError("Could not generate a variation. Please start over.");
       return;
     }
-    setLoadingMore(1);
+    const numToGenerate = 4;
+    setLoadingMore(numToGenerate);
     setError(null);
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          originalImage: baseImage,
-          designerNotes: "Generate a variation of this design.",
-          userAnswers: userAnswers,
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate variation');
+      const generationPromises = Array.from({ length: numToGenerate }).map(() =>
+        fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            originalImage: baseImage,
+            designerNotes: "Generate a variation of this design.",
+            userAnswers: userAnswers,
+          }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'Failed to generate variation');
+          }
+          return res.json();
+        })
+      );
+
+      const results = await Promise.all(generationPromises);
+      const newImages = results.map(data => data.image).filter(Boolean);
+
+      if (newImages.length > 0) {
+        setResultImages(prevImages => [...prevImages, ...newImages]);
       }
-      const data = await response.json();
-      if (data.image) {
-        setResultImages(prevImages => [...prevImages, data.image]);
-      } else {
-        throw new Error("Failed to parse image from API response");
+      if (newImages.length < numToGenerate) {
+        setError(`Successfully generated ${newImages.length} new variations, but ${numToGenerate - newImages.length} failed.`);
       }
+
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -96,7 +121,7 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
   };
 
   return (
-    <div className="max-w-5xl mx-auto z-10 relative">
+    <div className="w-full mx-auto z-10 relative px-4 sm:px-6 lg:px-8">
       {error && (
         <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 text-red-300 rounded-lg text-sm flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="http://www.w3.org/2000/svg" fill="currentColor">
@@ -110,9 +135,9 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
         <p className="mt-2 text-lg text-gray-400">The core structure of your room has been preserved for a realistic comparison.</p>
       </div>
       
-      <div className={`grid gap-8 ${images.length === 1 ? 'grid-cols-1 max-w-lg mx-auto' : 'grid-cols-1 md:grid-cols-2'}`}>
+      <div className={`grid gap-8 ${images.length === 1 ? 'grid-cols-1 max-w-lg mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
         {images.map((image, index) => (
-          <div key={index} className="group relative bg-gray-800/50 rounded-xl shadow-lg overflow-hidden">
+          <div key={index} className="group relative bg-gray-800/50 rounded-xl shadow-lg overflow-hidden" onClick={() => setZoomedImage(image)}>
             <Image
               src={image}
               alt={`Generated Design ${index + 1}`}
@@ -121,14 +146,11 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
               className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-4">
-              <button onClick={() => setZoomedImage(image)} className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold py-2 px-5 rounded-lg transition">
-                Zoom
-              </button>
-              <a href={image} download={`interior-design-${index + 1}.png`} className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold py-2 px-5 rounded-lg transition">
-                Download
+              <a href={image} download={`interior-design-${index + 1}.png`} title="Download" className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold p-3 rounded-full transition">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               </a>
-              <button onClick={() => handleGenerateVariation(image)} className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold py-2 px-5 rounded-lg transition">
-                Variations
+              <button onClick={(e) => { e.stopPropagation(); handleGenerateVariation(image); }} title="Generate Variations" className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold p-3 rounded-full transition">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
               </button>
             </div>
           </div>

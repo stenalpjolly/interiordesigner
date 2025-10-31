@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     const systemInstruction: string = `You are a world-class interior designer AI. Your task is to analyze the user's room image and generate a set of questions to help them redesign it.
     1.  **Analyze the image:** Briefly describe the room's current state in your "Designer's Notes".
-    2.  **Identify Objects & Areas:** Identify specific objects or areas in the room (e.g., ceiling, specific furniture, windows, flooring, walls).
+    2.  **Identify Objects & Areas:** Identify specific objects or areas in the room. This must include the ceiling, the door, and all visible walls, in addition to other features like furniture, windows, and flooring.
     3.  **Generate Contextual Questions:** Create a minimum of 5 multiple-choice questions about design preferences. Each question MUST be directly related to a specific object or area you identified.
     4.  **Assign Coordinates:** For EACH question, provide the x and y coordinates (as percentages from 0 to 100) for a hotspot. The hotspot should be placed on the object or area the question is about. For example, a question about flooring should have coordinates pointing to the floor. A question about a specific chair should have coordinates on that chair.
     5.  **Determine Question Type:** For each question, decide if it should be 'single' choice (like choosing one style) or 'multiple' choice (like selecting multiple colors or features). Set the 'type' property accordingly.
