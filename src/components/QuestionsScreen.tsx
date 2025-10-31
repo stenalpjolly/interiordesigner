@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface AnalysisData {
   designerNotes: string;
@@ -26,6 +26,63 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
   const [customAnswers, setCustomAnswers] = useState<Record<number, string>>({});
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (imageData) {
+      const img = new window.Image();
+      img.src = imageData;
+      img.onload = () => {
+        setImageSize({ width: img.width, height: img.height });
+      };
+    }
+  }, [imageData]);
+
+  useEffect(() => {
+    const container = imageContainerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (container) {
+        setContainerSize({ width: container.offsetWidth, height: container.offsetHeight });
+      }
+    });
+
+    resizeObserver.observe(container);
+    setContainerSize({ width: container.offsetWidth, height: container.offsetHeight });
+
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  const getHotspotPosition = (coord: { x: number; y: number }) => {
+    if (!containerSize.width || !containerSize.height || !imageSize.width || !imageSize.height) {
+      return { left: `${coord.x}%`, top: `${coord.y}%` };
+    }
+
+    const containerRatio = containerSize.width / containerSize.height;
+    const imageRatio = imageSize.width / imageSize.height;
+
+    if (imageRatio > containerRatio) { // Wider image -> vertical letterbox
+      const scale = containerSize.width / imageSize.width;
+      const scaledHeight = imageSize.height * scale;
+      const yOffset = (containerSize.height - scaledHeight) / 2;
+      
+      const top = yOffset + (coord.y / 100) * scaledHeight;
+      
+      return { left: `${coord.x}%`, top: `${(top / containerSize.height) * 100}%` };
+    } else { // Taller image -> horizontal letterbox
+      const scale = containerSize.height / imageSize.height;
+      const scaledWidth = imageSize.width * scale;
+      const xOffset = (containerSize.width - scaledWidth) / 2;
+
+      const left = xOffset + (coord.x / 100) * scaledWidth;
+
+      return { left: `${(left / containerSize.width) * 100}%`, top: `${coord.y}%` };
+    }
+  };
 
   const handleHotspotClick = (index: number) => {
     const questionElement = questionRefs.current[index];
@@ -141,7 +198,7 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" style={{ height: 'calc(80vh - 80px)' }}>
           {/* Left Column: Image & Notes */}
           <div className="flex flex-col gap-6 h-full">
-            <div className="relative flex-1 min-h-0 rounded-lg border border-gray-700/50">
+            <div ref={imageContainerRef} className="relative flex-1 min-h-0 rounded-lg border border-gray-700/50">
               <Image src={imageData} alt="Room preview" layout="fill" objectFit="contain" className="rounded-lg" />
               {analysisData.questions.map((q, index) => (
                 <button
@@ -149,7 +206,7 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
                   type="button"
                   onClick={() => handleHotspotClick(index)}
                   className="absolute w-8 h-8 rounded-full flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 bg-blue-500/80 backdrop-blur-sm border-2 border-white/50 hover:scale-125 transition-transform duration-200 animate-pulse"
-                  style={{ left: `${q.coordinates.x}%`, top: `${q.coordinates.y}%` }}
+                  style={getHotspotPosition(q.coordinates)}
                   aria-label={`Go to question ${index + 1}`}
                 >
                   <span className="font-bold text-white text-sm">{index + 1}</span>
