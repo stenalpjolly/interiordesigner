@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   ];
 
   try {
-    const { imageData } = await req.json();
+    const { image: imageData, bypassCache, existingQuestions } = await req.json();
     if (!imageData) {
       return NextResponse.json({ error: 'Missing image data' }, { status: 400 });
     }
@@ -72,12 +72,14 @@ export async function POST(req: NextRequest) {
     const hash = crypto.createHash('sha256').update(imageData).digest('hex');
     const cacheFilePath = path.join(CACHE_DIR, `${hash}.json`);
 
-    try {
-      const cachedData = await fs.readFile(cacheFilePath, 'utf-8');
-      console.log('Returning cached analysis.');
-      return NextResponse.json(JSON.parse(cachedData));
-    } catch (error) {
-      // Not in cache, proceed
+    if (!bypassCache) {
+      try {
+        const cachedData = await fs.readFile(cacheFilePath, 'utf-8');
+        console.log('Returning cached analysis.');
+        return NextResponse.json(JSON.parse(cachedData));
+      } catch (error) {
+        // Not in cache, proceed
+      }
     }
 
     const match = imageData.match(/^data:(image\/\w+);base64,(.*)$/);
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
     };
 
     const systemInstruction: string = `You are a world-class interior designer AI. Your task is to analyze the user's room image and generate a set of questions to help them redesign it.
+    ${existingQuestions && existingQuestions.length > 0 ? `Do not generate questions that are already in this list: ${existingQuestions.join(", ")}.` : ''}
     1.  **Analyze the image:** Briefly describe the room's current state in your "Designer's Notes".
     2.  **Identify Objects & Areas:** Identify specific objects or areas in the room. This must include the ceiling, the door, and all visible walls, in addition to other features like furniture, windows, and flooring.
     3.  **Generate Contextual Questions:** Create a minimum of 5 multiple-choice questions about design preferences. Each question MUST be directly related to a specific object or area you identified.

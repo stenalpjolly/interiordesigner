@@ -25,6 +25,69 @@ export default function HomePage() {
     setUserAnswers,
   } = useAppContext();
 
+  const handleAnswerChange = (question: string, newAnswers: string[]) => {
+    setUserAnswers(prev => ({ ...prev, [question]: newAnswers }));
+  };
+
+  const handleDeleteQuestion = (index: number) => {
+    if (!analysisData) return;
+    const newQuestions = [...analysisData.questions];
+    const deletedQuestion = newQuestions.splice(index, 1)[0];
+    
+    setAnalysisData({ ...analysisData, questions: newQuestions });
+    
+    // Also remove the answer for the deleted question
+    setUserAnswers(prev => {
+      const newAnswers = { ...prev };
+      if (deletedQuestion) {
+        delete newAnswers[deletedQuestion.question];
+      }
+      return newAnswers;
+    });
+  };
+
+  const handleGenerateMoreQuestions = async () => {
+    setLoadingText('Generating more questions...');
+    setScreen('loading');
+    setError(null);
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: imageBase64,
+          bypassCache: true,
+          existingQuestions: analysisData?.questions.map(q => q.question) || [],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Analysis failed: ${response.statusText}`);
+      }
+
+      const newData = await response.json();
+      
+      setAnalysisData(prevData => {
+        if (!prevData) return newData;
+        
+        const existingQuestions = new Set(prevData.questions.map(q => q.question));
+        const newQuestions = newData.questions.filter((q: any) => !existingQuestions.has(q.question));
+        
+        return {
+          ...prevData,
+          questions: [...prevData.questions, ...newQuestions],
+        };
+      });
+
+      setScreen('questions');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message);
+      setScreen('questions'); // Go back to questions screen on error
+    }
+  };
+
   const handleImageUpload = async (file: File) => {
     setLoadingText('Analyzing your image...');
     setScreen('loading');
@@ -42,7 +105,7 @@ export default function HomePage() {
         const response = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageData: base64 }),
+          body: JSON.stringify({ image: base64 }),
         });
 
         if (!response.ok) {
@@ -64,11 +127,10 @@ export default function HomePage() {
     }
   };
 
-  const handleQuestionsSubmit = async (answers: Record<string, string | string[]>, count: number) => {
+  const handleQuestionsSubmit = async (answers: Record<string, string>, count: number) => {
     setLoadingText('Generating your designs...');
     setScreen('loading');
     setError(null);
-    setUserAnswers(answers);
 
     try {
       const generationPromises = Array.from({ length: count }, () =>
@@ -134,7 +196,16 @@ export default function HomePage() {
         return <LoadingScreen text={loadingText} />;
       case 'questions':
         if (analysisData && imageBase64) {
-          return <QuestionsScreen analysisData={analysisData} imageData={imageBase64} onSubmit={handleQuestionsSubmit} error={error} />;
+          return <QuestionsScreen 
+            analysisData={analysisData} 
+            imageData={imageBase64} 
+            onSubmit={handleQuestionsSubmit} 
+            error={error} 
+            onGenerateMoreQuestions={handleGenerateMoreQuestions}
+            onDeleteQuestion={handleDeleteQuestion}
+            answers={userAnswers || {}}
+            onAnswerChange={handleAnswerChange}
+          />;
         }
         handleStartOver();
         return <UploadScreen onImageUpload={handleImageUpload} error="Something went wrong. Please start over." />;

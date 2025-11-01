@@ -18,12 +18,24 @@ interface QuestionsScreenProps {
   analysisData: AnalysisData;
   imageData: string;
   onSubmit: (answers: Record<string, string>, variantCount: number) => void;
+  onGenerateMoreQuestions: () => void;
+  onDeleteQuestion: (index: number) => void;
+  answers: Record<string, string[]>;
+  onAnswerChange: (question: string, newAnswers: string[]) => void;
   error?: string | null;
 }
 
-export default function QuestionsScreen({ analysisData, imageData, onSubmit, error }: QuestionsScreenProps) {
+export default function QuestionsScreen({ 
+  analysisData, 
+  imageData, 
+  onSubmit, 
+  onGenerateMoreQuestions, 
+  onDeleteQuestion,
+  answers,
+  onAnswerChange,
+  error 
+}: QuestionsScreenProps) {
   const [variantCount, setVariantCount] = useState(2);
-  const [customAnswers, setCustomAnswers] = useState<Record<number, string>>({});
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -102,43 +114,43 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
     }
   };
 
-  const handleCustomAnswerChange = (index: number, value: string) => {
-    setCustomAnswers(prev => ({ ...prev, [index]: value }));
+  const handleOptionChange = (question: string, option: string, type: 'single' | 'multiple') => {
+    const currentAnswers = answers[question] || [];
+    let newAnswers: string[];
+
+    if (type === 'single') {
+      newAnswers = [option];
+    } else { // multiple
+      if (currentAnswers.includes(option)) {
+        newAnswers = currentAnswers.filter(a => a !== option);
+      } else {
+        newAnswers = [...currentAnswers, option];
+      }
+    }
+    onAnswerChange(question, newAnswers);
+  };
+
+  const handleCustomAnswerChange = (question: string, value: string) => {
+    const currentAnswers = answers[question] || [];
+    const otherAnswers = currentAnswers.filter(a => !a.startsWith('custom:'));
+    const newAnswers = value.trim() ? [...otherAnswers, `custom:${value.trim()}`] : otherAnswers;
+    onAnswerChange(question, newAnswers);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const answers: Record<string, string> = {};
-
-    analysisData.questions.forEach((q, index) => {
-      const questionId = `question-${index}`;
-      let selectedOptions: string[] = [];
-
-      if (q.type === 'multiple') {
-        selectedOptions = formData.getAll(questionId) as string[];
-      } else {
-        const singleAnswer = formData.get(questionId) as string;
-        if (singleAnswer) {
-          selectedOptions.push(singleAnswer);
-        }
+    
+    const processedAnswers: Record<string, string> = {};
+    for (const question in answers) {
+      const answerList = answers[question];
+      if (answerList && answerList.length > 0) {
+        processedAnswers[question] = answerList
+          .map(a => a.startsWith('custom:') ? a.substring(7) : a)
+          .join(', ');
       }
-      
-      const customOptionValue = `custom-${index}`;
-      if (selectedOptions.includes(customOptionValue) && customAnswers[index]) {
-        const otherIndex = selectedOptions.indexOf(customOptionValue);
-        selectedOptions[otherIndex] = customAnswers[index].trim();
-      }
+    }
 
-      const finalOptions = selectedOptions.filter(opt => opt !== customOptionValue && opt.trim() !== '');
-
-      if (finalOptions.length > 0) {
-        answers[q.question] = finalOptions.join(', ');
-      }
-    });
-
-    onSubmit(answers, variantCount);
+    onSubmit(processedAnswers, variantCount);
   };
 
   return (
@@ -193,6 +205,13 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
           <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200 shadow-lg hover:shadow-blue-500/50">
             Generate
           </button>
+          <button
+            type="button"
+            onClick={onGenerateMoreQuestions}
+            className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200 shadow-lg hover:shadow-gray-500/50"
+          >
+            Generate More Questions
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" style={{ height: 'calc(80vh - 80px)' }}>
@@ -227,13 +246,28 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {analysisData.questions.map((q, index) => {
                 const customOptionId = `custom-input-${index}`;
+                const currentAnswers = answers[q.question] || [];
+                const customAnswerValue = currentAnswers.find(a => a.startsWith('custom:'))?.substring(7) || '';
+
                 return (
                   <div 
-                    key={index} 
+                    key={q.question} 
                     ref={el => questionRefs.current[index] = el}
                     className="bg-gray-800/50 p-5 rounded-lg border border-gray-700/50 h-fit"
                   >
-                    <p className="font-semibold mb-1 text-lg text-gray-200">{index + 1}. {q.question}</p>
+                    <div className="flex justify-between items-start">
+                      <p className="font-semibold mb-1 text-lg text-gray-200 flex-1">{index + 1}. {q.question}</p>
+                      <button 
+                        type="button" 
+                        onClick={() => onDeleteQuestion(index)}
+                        className="text-gray-500 hover:text-red-400 transition-colors duration-200"
+                        aria-label="Delete question"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                     {q.type === 'multiple' && <p className="text-xs text-gray-400 mb-4">(Select all that apply)</p>}
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -243,6 +277,8 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
                             type={q.type === 'multiple' ? 'checkbox' : 'radio'}
                             name={`question-${index}`}
                             value={option}
+                            checked={currentAnswers.includes(option)}
+                            onChange={() => handleOptionChange(q.question, option, q.type)}
                             className="hidden peer"
                           />
                           <span className="flex items-center justify-center w-full text-center py-3 px-4 rounded-md bg-gray-700/50 text-gray-300 cursor-pointer transition-all duration-150 border-2 border-transparent hover:border-blue-500/50 active:scale-95 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:font-semibold peer-checked:border-blue-400">
@@ -254,7 +290,16 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
                         <input
                           type={q.type === 'multiple' ? 'checkbox' : 'radio'}
                           name={`question-${index}`}
-                          value={`custom-${index}`}
+                          value="custom"
+                          checked={!!customAnswerValue}
+                          onChange={() => {
+                            // This checkbox toggles the custom answer state
+                            if (customAnswerValue) {
+                              handleCustomAnswerChange(q.question, '');
+                            } else {
+                              // Focus the input, maybe set a default custom value if needed
+                            }
+                          }}
                           className="hidden peer"
                           id={`custom-checkbox-${index}`}
                         />
@@ -268,8 +313,8 @@ export default function QuestionsScreen({ analysisData, imageData, onSubmit, err
                       <input
                         type="text"
                         id={customOptionId}
-                        value={customAnswers[index] || ''}
-                        onChange={(e) => handleCustomAnswerChange(index, e.target.value)}
+                        value={customAnswerValue}
+                        onChange={(e) => handleCustomAnswerChange(q.question, e.target.value)}
                         onClick={() => {
                           const customCheckbox = document.getElementById(`custom-checkbox-${index}`) as HTMLInputElement;
                           if (customCheckbox) customCheckbox.checked = true;

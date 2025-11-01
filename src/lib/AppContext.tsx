@@ -20,8 +20,8 @@ interface AppState {
   setResultImages: (images: string[] | ((prev: string[]) => string[])) => void;
   error: string | null;
   setError: (error: string | null) => void;
-  userAnswers: Record<string, string | string[]> | null;
-  setUserAnswers: (answers: Record<string, string | string[]> | null) => void;
+  userAnswers: Record<string, string[]> | null;
+  setUserAnswers: (answers: Record<string, string[]> | null | ((prev: Record<string, string[]> | null) => Record<string, string[]> | null)) => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -31,7 +31,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [resultImages, setResultImages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [userAnswers, setUserAnswers] = useState<Record<string, string | string[]> | null>(null);
+  const [userAnswers, setUserAnswers] = useState<Record<string, string[]> | null>({});
 
   const value = {
     imageBase64,
