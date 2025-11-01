@@ -221,7 +221,7 @@ export default function HomePage() {
       <div className="absolute top-0 left-0 p-4">
         <h1 className="text-2xl font-bold tracking-tight">10x Interior Designer</h1>
       </div>
-      <div className="w-[90%]">
+      <div className="w-full flex justify-center">
         {getScreenContent()}
       </div>
     </main>
