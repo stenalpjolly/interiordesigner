@@ -36,6 +36,7 @@ export default function QuestionsScreen({
   error 
 }: QuestionsScreenProps) {
   const [variantCount, setVariantCount] = useState(2);
+  const [customInstructions, setCustomInstructions] = useState('');
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -150,6 +151,10 @@ export default function QuestionsScreen({
       }
     }
 
+    if (customInstructions.trim()) {
+      processedAnswers['customInstructions'] = customInstructions.trim();
+    }
+
     onSubmit(processedAnswers, variantCount);
   };
 
@@ -238,6 +243,20 @@ export default function QuestionsScreen({
                 AI Designer&apos;s Notes
               </h3>
               <p className="text-gray-300 italic text-sm">{analysisData.designerNotes}</p>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700/50 flex-shrink-0">
+              <label htmlFor="custom-instructions" className="font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0113 3.414L16.586 7A2 2 0 0118 8.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1-3a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
+                Your Custom Instructions (Optional)
+              </label>
+              <textarea
+                id="custom-instructions"
+                rows={3}
+                className="w-full bg-gray-700 border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 mt-2"
+                placeholder="e.g., 'Make sure to include a large, modern sectional sofa and a minimalist coffee table. Use warm, earthy tones.'"
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+              ></textarea>
             </div>
           </div>
           
