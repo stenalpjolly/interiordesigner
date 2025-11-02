@@ -40,6 +40,11 @@ Based on these instructions, generate a new, photorealistic image of the redesig
       ${answersString}
     `;
 
+    console.log("--- Generation Prompt ---");
+    console.log("System Instruction:", systemInstruction);
+    console.log("User Prompt:", userPrompt);
+    console.log("-------------------------");
+
     const match = originalImage.match(/^data:(image\/\w+);base64,(.*)$/);
     if (!match) {
       return NextResponse.json({ error: 'Invalid image data format' }, { status: 400 });

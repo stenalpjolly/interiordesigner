@@ -102,6 +102,10 @@ export async function POST(req: NextRequest) {
     5.  **Determine Question Type:** For each question, decide if it should be 'single' choice (like choosing one style) or 'multiple' choice (like selecting multiple colors or features). Set the 'type' property accordingly.
     6.  **Output:** Respond ONLY with the raw JSON object matching the provided schema. Do not include markdown formatting (e.g., \`\`\`json), any introductory text, or any other conversational filler. The output must be a valid JSON object and nothing else.`;
 
+    console.log("--- Analysis Prompt ---");
+    console.log(systemInstruction);
+    console.log("-----------------------");
+
     const result = await genAI.models.generateContent({
       model: MODEL_NAME,
       contents: [{ role: "user", parts: [imagePart] }],
