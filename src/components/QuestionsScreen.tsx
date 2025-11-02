@@ -133,7 +133,7 @@ export default function QuestionsScreen({
   const handleCustomAnswerChange = (question: string, value: string) => {
     const currentAnswers = answers[question] || [];
     const otherAnswers = currentAnswers.filter(a => !a.startsWith('custom:'));
-    const newAnswers = value.trim() ? [...otherAnswers, `custom:${value.trim()}`] : otherAnswers;
+    const newAnswers = value.trim() ? [...otherAnswers, `custom:${value}`] : otherAnswers;
     onAnswerChange(question, newAnswers);
   };
 
@@ -145,7 +145,7 @@ export default function QuestionsScreen({
       const answerList = answers[question];
       if (answerList && answerList.length > 0) {
         processedAnswers[question] = answerList
-          .map(a => a.startsWith('custom:') ? a.substring(7) : a)
+          .map(a => a.startsWith('custom:') ? a.substring(7).trim() : a)
           .join(', ');
       }
     }
