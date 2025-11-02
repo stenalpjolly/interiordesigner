@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   ];
 
   try {
-    const { originalImage, designerNotes, userAnswers } = await req.json();
+    const { originalImage, designerNotes, userAnswers, styleVariety } = await req.json();
 
     if (!originalImage || !designerNotes || !userAnswers) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -32,6 +32,19 @@ export async function POST(req: NextRequest) {
 
 Based on these instructions, generate a new, photorealistic image of the redesigned room. The output should be only the image.`;
 
+    let finalSystemInstruction = systemInstruction;
+
+    if (styleVariety === 'subtle') {
+      finalSystemInstruction += "\n-   **VARIATION:** Introduce subtle, tasteful variations in this design compared to any previous designs you've generated for this user.";
+    } else if (styleVariety === 'creative') {
+      const creativeStyles = [
+        "Minimalist", "Bohemian", "Art Deco", "Industrial", "Scandinavian", "Coastal", 
+        "Mid-Century Modern", "Farmhouse", "Hollywood Regency", "Japandi"
+      ];
+      const randomStyle = creativeStyles[Math.floor(Math.random() * creativeStyles.length)];
+      finalSystemInstruction += `\n-   **CREATIVE DIRECTION:** Interpret the user's request in a completely different creative style. For this image, adopt a ${randomStyle} aesthetic.`;
+    }
+
     const userPrompt = `
       **Original Designer's Analysis:**
       ${designerNotes}
@@ -41,7 +54,7 @@ Based on these instructions, generate a new, photorealistic image of the redesig
     `;
 
     console.log("--- Generation Prompt ---");
-    console.log("System Instruction:", systemInstruction);
+    console.log("System Instruction:", finalSystemInstruction);
     console.log("User Prompt:", userPrompt);
     console.log("-------------------------");
 
@@ -64,7 +77,7 @@ Based on these instructions, generate a new, photorealistic image of the redesig
         contents: [{ role: "user", parts: [{text: userPrompt}, imagePart] }],
         config: {
             safetySettings,
-            systemInstruction,
+            systemInstruction: finalSystemInstruction,
         }
     });
     

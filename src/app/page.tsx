@@ -127,7 +127,7 @@ export default function HomePage() {
     }
   };
 
-  const handleQuestionsSubmit = async (answers: Record<string, string>, count: number) => {
+  const handleQuestionsSubmit = async (answers: Record<string, string>, count: number, styleVariety: string) => {
     setLoadingText('Generating your designs...');
     setScreen('loading');
     setError(null);
@@ -141,6 +141,7 @@ export default function HomePage() {
             originalImage: imageBase64,
             designerNotes: analysisData?.designerNotes,
             userAnswers: answers,
+            styleVariety: styleVariety,
           }),
         }).then(async res => {
           if (!res.ok) {

@@ -17,7 +17,7 @@ interface AnalysisData {
 interface QuestionsScreenProps {
   analysisData: AnalysisData;
   imageData: string;
-  onSubmit: (answers: Record<string, string>, variantCount: number) => void;
+  onSubmit: (answers: Record<string, string>, variantCount: number, styleVariety: string) => void;
   onGenerateMoreQuestions: () => void;
   onDeleteQuestion: (index: number) => void;
   answers: Record<string, string[]>;
@@ -36,6 +36,7 @@ export default function QuestionsScreen({
   error 
 }: QuestionsScreenProps) {
   const [variantCount, setVariantCount] = useState(2);
+  const [styleVariety, setStyleVariety] = useState('default');
   const [customInstructions, setCustomInstructions] = useState('');
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -155,7 +156,7 @@ export default function QuestionsScreen({
       processedAnswers['customInstructions'] = customInstructions.trim();
     }
 
-    onSubmit(processedAnswers, variantCount);
+    onSubmit(processedAnswers, variantCount, styleVariety);
   };
 
   return (
@@ -193,6 +194,19 @@ export default function QuestionsScreen({
         </div>
 
         <div className="bg-gray-800/30 p-4 rounded-lg flex items-center justify-end gap-4 mb-6 border border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <label htmlFor="style-variety" className="font-semibold text-gray-300 text-sm">Style Variety</label>
+            <select
+              id="style-variety"
+              value={styleVariety}
+              onChange={(e) => setStyleVariety(e.target.value)}
+              className="bg-gray-700 border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
+            >
+              <option value="default">Default</option>
+              <option value="subtle">Subtle Variations</option>
+              <option value="creative">Creative Mix</option>
+            </select>
+          </div>
           <div className="flex items-center gap-3">
             <label htmlFor="variant-count" className="font-semibold text-gray-300 text-sm">How many designs?</label>
             <select
