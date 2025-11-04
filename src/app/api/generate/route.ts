@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Part } from '@google/genai';
+import crypto from 'crypto';
 
 const MODEL_NAME = "gemini-2.5-flash-image-preview";
 
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
     { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
     { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_and_ABOVE },
   ];
 
   try {
@@ -53,10 +54,8 @@ Based on these instructions, generate a new, photorealistic image of the redesig
       ${answersString}
     `;
 
-    console.log("--- Generation Prompt ---");
-    console.log("System Instruction:", finalSystemInstruction);
-    console.log("User Prompt:", userPrompt);
-    console.log("-------------------------");
+    const hash = crypto.createHash('sha256').update(originalImage).digest('hex');
+    console.log(`Generating design for image hash: ${hash}`);
 
     const match = originalImage.match(/^data:(image\/\w+);base64,(.*)$/);
     if (!match) {

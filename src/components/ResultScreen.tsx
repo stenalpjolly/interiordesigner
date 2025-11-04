@@ -4,6 +4,7 @@ import { useAppContext } from '@/lib/AppContext';
 import LoadingScreen from './LoadingScreen';
 import SkeletonLoader from './SkeletonLoader';
 import ImageComparison from './ImageComparison';
+import ThreeSixtyViewer from './ThreeSixtyViewer';
 
 interface ResultScreenProps {
   images: string[];
@@ -17,6 +18,9 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
   const { userAnswers, analysisData, resultImages, setResultImages, error, setError, imageBase64 } = useAppContext();
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  const [generating360, setGenerating360] = useState<Record<string, boolean>>({});
+  const [threeSixtyImages, setThreeSixtyImages] = useState<Record<string, string>>({});
+  const [showThreeSixtyViewer, setShowThreeSixtyViewer] = useState<string | null>(null);
 
   const handleSelectImage = (image: string) => {
     setSelectedImages(prev => {
@@ -120,6 +124,31 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
     }
   };
 
+  const handleGenerate360 = async (baseImage: string) => {
+    setGenerating360(prev => ({ ...prev, [baseImage]: true }));
+    setError(null);
+    try {
+      const response = await fetch('/api/generate-360', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redesignedImage: baseImage }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate 360 view');
+      }
+
+      const data = await response.json();
+      setThreeSixtyImages(prev => ({ ...prev, [baseImage]: data.image }));
+      setShowThreeSixtyViewer(data.image);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setGenerating360(prev => ({ ...prev, [baseImage]: false }));
+    }
+  };
+
   const handleClearCache = async () => {
     setCacheStatus('Clearing...');
     try {
@@ -174,11 +203,27 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
             />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-4">
               <a href={image} download={`interior-design-${index + 1}.png`} title="Download" className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold p-3 rounded-full transition">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="http://www.w3.org/2000/svg" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               </a>
               <button onClick={(e) => { e.stopPropagation(); handleGenerateVariation(image); }} title="Generate Variations" className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold p-3 rounded-full transition">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="http://www.w3.org/2000/svg" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
               </button>
+              {threeSixtyImages[image] ? (
+                <button onClick={(e) => { e.stopPropagation(); setShowThreeSixtyViewer(threeSixtyImages[image]); }} title="View 360" className="bg-green-500/50 backdrop-blur-sm hover:bg-green-500/70 text-white font-semibold p-3 rounded-full transition">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v5h-2zm0 7h2v2h-2z"/></svg>
+                </button>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); handleGenerate360(image); }} title="Generate 360 View" className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold p-3 rounded-full transition" disabled={generating360[image]}>
+                  {generating360[image] ? (
+                    <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="http://www.w3.org/2000/svg" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -219,6 +264,20 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
             setSelectedImages([]);
           }} 
         />
+      )}
+
+      {showThreeSixtyViewer && (
+        <div>
+          <button 
+            onClick={() => setShowThreeSixtyViewer(null)} 
+            className="fixed top-4 right-4 z-[60] bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold p-3 rounded-full transition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <ThreeSixtyViewer imageUrl={showThreeSixtyViewer} />
+        </div>
       )}
     </div>
   );
