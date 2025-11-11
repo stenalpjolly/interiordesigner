@@ -63,14 +63,23 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
         })
       );
 
-      const results = await Promise.all(generationPromises);
-      const newImages = results.map(data => data.image).filter(Boolean);
-      
+      const results = await Promise.allSettled(generationPromises);
+      const newImages = results
+        .filter((result): result is PromiseFulfilledResult<{ image: string }> => result.status === 'fulfilled' && result.value.image)
+        .map(result => result.value.image);
+
       if (newImages.length > 0) {
         setResultImages(prevImages => [...prevImages, ...newImages]);
       }
-      if (newImages.length < numToGenerate) {
-        setError(`Successfully generated ${newImages.length} new designs, but ${numToGenerate - newImages.length} failed.`);
+
+      const failedCount = results.length - newImages.length;
+      if (failedCount > 0) {
+        setError(`Successfully generated ${newImages.length} new designs, but ${failedCount} failed.`);
+        results.forEach(result => {
+          if (result.status === 'rejected') {
+            console.error("Generation failed:", result.reason);
+          }
+        });
       }
 
     } catch (error) {
@@ -107,14 +116,23 @@ export default function ResultScreen({ images, onStartOver }: ResultScreenProps)
         })
       );
 
-      const results = await Promise.all(generationPromises);
-      const newImages = results.map(data => data.image).filter(Boolean);
+      const results = await Promise.allSettled(generationPromises);
+      const newImages = results
+        .filter((result): result is PromiseFulfilledResult<{ image: string }> => result.status === 'fulfilled' && result.value.image)
+        .map(result => result.value.image);
 
       if (newImages.length > 0) {
         setResultImages(prevImages => [...prevImages, ...newImages]);
       }
-      if (newImages.length < numToGenerate) {
-        setError(`Successfully generated ${newImages.length} new variations, but ${numToGenerate - newImages.length} failed.`);
+      
+      const failedCount = results.length - newImages.length;
+      if (failedCount > 0) {
+        setError(`Successfully generated ${newImages.length} new variations, but ${failedCount} failed.`);
+        results.forEach(result => {
+          if (result.status === 'rejected') {
+            console.error("Variation generation failed:", result.reason);
+          }
+        });
       }
 
     } catch (error) {
